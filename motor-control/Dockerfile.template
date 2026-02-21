@@ -1,0 +1,12 @@
+FROM balenalib/%%BALENA_MACHINE_NAME%%-python:3.11-bookworm-run
+
+RUN install_packages python3-dev
+
+WORKDIR /usr/src/app
+
+COPY app/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app/ .
+
+CMD ["python", "server.py"]

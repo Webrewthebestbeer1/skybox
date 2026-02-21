@@ -1,0 +1,30 @@
+version: "2.1"
+
+volumes:
+  motor-data:
+
+services:
+  balena-cam:
+    build: ./balena-cam
+    privileged: true
+    network_mode: host
+    restart: always
+
+  motor-control:
+    build: ./motor-control
+    privileged: true
+    network_mode: host
+    restart: always
+    volumes:
+      - motor-data:/data
+    environment:
+      - SOFT_LIMIT_LEFT=-51200
+      - SOFT_LIMIT_RIGHT=51200
+      - MOTOR_VMAX=100000
+      - MOTOR_AMAX=500
+      - MOTOR_CURRENT_RUN=16
+      - MOTOR_CURRENT_HOLD=8
+      - SPI_BUS=0
+      - SPI_DEVICE=0
+      - FLASK_PORT=5000
+      - CAM_PORT=80

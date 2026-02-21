@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skybox Camera</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    margin: 12px 0 8px;
+    font-size: 1.3em;
+    font-weight: 500;
+    color: #ccc;
+  }
+  .video-container {
+    width: 100%;
+    max-width: 800px;
+    aspect-ratio: 4/3;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 0 12px;
+  }
+  .video-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  /* Position bar */
+  .pos-bar-wrap {
+    width: 100%;
+    max-width: 800px;
+    margin: 12px 12px 0;
+  }
+  .pos-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75em;
+    color: #888;
+    margin-bottom: 2px;
+  }
+  .pos-bar {
+    width: 100%;
+    height: 10px;
+    background: #2a2a3e;
+    border-radius: 5px;
+    position: relative;
+    overflow: hidden;
+  }
+  .pos-bar .indicator {
+    position: absolute;
+    top: 0;
+    width: 6px;
+    height: 100%;
+    background: #4fc3f7;
+    border-radius: 3px;
+    transition: left 0.15s ease;
+  }
+  .pos-text {
+    text-align: center;
+    font-size: 0.8em;
+    color: #aaa;
+    margin-top: 4px;
+  }
+
+  /* Controls */
+  .controls {
+    width: 100%;
+    max-width: 800px;
+    margin: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .step-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+  .step-row label {
+    font-size: 0.75em;
+    color: #888;
+    align-self: center;
+    min-width: 56px;
+    text-align: right;
+    margin-right: 4px;
+  }
+  .action-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 4px;
+  }
+  button {
+    padding: 10px 18px;
+    font-size: 1em;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #fff;
+    background: #3a3a5c;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: background 0.15s;
+  }
+  button:active, button.active { background: #5a5a8c; }
+  button.left { background: #2e5c8a; }
+  button.left:active, button.left.active { background: #4a8ac0; }
+  button.right { background: #2e5c8a; }
+  button.right:active, button.right.active { background: #4a8ac0; }
+  button.stop { background: #8a2e2e; }
+  button.stop:active { background: #c04a4a; }
+  button.home { background: #2e6e3e; }
+  button.home:active { background: #4a9a5a; }
+
+  .status {
+    font-size: 0.8em;
+    color: #888;
+    text-align: center;
+    min-height: 1.2em;
+  }
+  .status.error { color: #e57373; }
+  .status.moving { color: #4fc3f7; }
+</style>
+</head>
+<body>
+  <h1>Skybox Camera</h1>
+
+  <div class="video-container">
+    <iframe src="http://{{ request.host.split(':')[0] }}:{{ cam_port }}" allowfullscreen></iframe>
+  </div>
+
+  <div class="pos-bar-wrap">
+    <div class="pos-bar-labels">
+      <span id="lbl-left"></span>
+      <span>0</span>
+      <span id="lbl-right"></span>
+    </div>
+    <div class="pos-bar">
+      <div class="indicator" id="pos-indicator"></div>
+    </div>
+    <div class="pos-text">Position: <span id="pos-value">--</span></div>
+  </div>
+
+  <div class="controls">
+    <div class="step-row">
+      <label>Coarse</label>
+      <button class="left" data-steps="-10000">&laquo; 10k</button>
+      <button class="right" data-steps="10000">10k &raquo;</button>
+    </div>
+    <div class="step-row">
+      <label>Medium</label>
+      <button class="left" data-steps="-2000">&lsaquo; 2k</button>
+      <button class="right" data-steps="2000">2k &rsaquo;</button>
+    </div>
+    <div class="step-row">
+      <label>Fine</label>
+      <button class="left" data-steps="-200">&lsaquo; 200</button>
+      <button class="right" data-steps="200">200 &rsaquo;</button>
+    </div>
+    <div class="action-row">
+      <button class="home" id="btn-home">Home</button>
+      <button class="stop" id="btn-stop">Stop</button>
+      <button id="btn-set-home">Set Home</button>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+
+<script>
+(function() {
+  var pollInterval = 5000;
+  var pollFast = 500;
+  var pollTimer = null;
+  var isMoving = false;
+  var softLeft = -51200;
+  var softRight = 51200;
+
+  var indicator = document.getElementById('pos-indicator');
+  var posValue = document.getElementById('pos-value');
+  var lblLeft = document.getElementById('lbl-left');
+  var lblRight = document.getElementById('lbl-right');
+  var statusEl = document.getElementById('status');
+
+  function setStatus(msg, cls) {
+    statusEl.textContent = msg;
+    statusEl.className = 'status' + (cls ? ' ' + cls : '');
+  }
+
+  function updateBar(pos) {
+    var range = softRight - softLeft;
+    if (range <= 0) return;
+    var pct = ((pos - softLeft) / range) * 100;
+    pct = Math.max(0, Math.min(100, pct));
+    indicator.style.left = 'calc(' + pct + '% - 3px)';
+    posValue.textContent = pos;
+    lblLeft.textContent = softLeft;
+    lblRight.textContent = softRight;
+  }
+
+  function fetchStatus() {
+    fetch('/api/status')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.error) {
+          setStatus(d.error, 'error');
+          return;
+        }
+        softLeft = d.soft_limit_left;
+        softRight = d.soft_limit_right;
+        updateBar(d.position);
+
+        if (d.moving) {
+          isMoving = true;
+          setStatus('Moving... pos=' + d.position + ' target=' + d.target, 'moving');
+          schedulePoll(pollFast);
+        } else {
+          if (isMoving) {
+            setStatus('Stopped at ' + d.position, '');
+          }
+          isMoving = false;
+          schedulePoll(pollInterval);
+        }
+      })
+      .catch(function(e) {
+        setStatus('Connection error', 'error');
+        schedulePoll(pollInterval);
+      });
+  }
+
+  function schedulePoll(ms) {
+    if (pollTimer) clearTimeout(pollTimer);
+    pollTimer = setTimeout(fetchStatus, ms);
+  }
+
+  function postApi(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: body ? JSON.stringify(body) : '{}'
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.error) setStatus(d.error, 'error');
+      schedulePoll(pollFast);
+      return d;
+    })
+    .catch(function(e) {
+      setStatus('Connection error', 'error');
+    });
+  }
+
+  // Step buttons — click and touch-hold
+  var stepButtons = document.querySelectorAll('[data-steps]');
+  for (var i = 0; i < stepButtons.length; i++) {
+    (function(btn) {
+      var steps = parseInt(btn.getAttribute('data-steps'), 10);
+      var holdTimer = null;
+      var holdInterval = null;
+
+      function doStep() {
+        postApi('/api/step', {steps: steps});
+      }
+
+      function startHold() {
+        doStep();
+        holdTimer = setTimeout(function() {
+          holdInterval = setInterval(doStep, 300);
+        }, 500);
+        btn.classList.add('active');
+      }
+
+      function stopHold() {
+        if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+        if (holdInterval) { clearInterval(holdInterval); holdInterval = null; }
+        btn.classList.remove('active');
+      }
+
+      btn.addEventListener('mousedown', function(e) { e.preventDefault(); startHold(); });
+      btn.addEventListener('mouseup', stopHold);
+      btn.addEventListener('mouseleave', stopHold);
+      btn.addEventListener('touchstart', function(e) { e.preventDefault(); startHold(); }, {passive: false});
+      btn.addEventListener('touchend', stopHold);
+      btn.addEventListener('touchcancel', stopHold);
+    })(stepButtons[i]);
+  }
+
+  document.getElementById('btn-stop').addEventListener('click', function() {
+    postApi('/api/stop');
+  });
+
+  document.getElementById('btn-home').addEventListener('click', function() {
+    postApi('/api/home');
+  });
+
+  document.getElementById('btn-set-home').addEventListener('click', function() {
+    if (confirm('Set current position as home (0)?')) {
+      postApi('/api/set-home');
+    }
+  });
+
+  // Initial poll
+  fetchStatus();
+})();
+</script>
+</body>
+</html>

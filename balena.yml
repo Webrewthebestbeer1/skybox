@@ -1,0 +1,17 @@
+name: skybox
+type: sw.application
+description: >-
+  Cabin camera with TMC5130A stepper motor pan control.
+  Two containers: balena-cam (video stream on port 80) and
+  motor-control (Flask API + web UI on port 5000).
+version: 1.0.0
+assets:
+  repository:
+    type: blob.asset
+    data:
+      url: "https://github.com/nicories/skybox"
+data:
+  defaultDeviceType: raspberrypi3
+  supportedDeviceTypes:
+    - raspberrypi3
+    - raspberrypi4-64
