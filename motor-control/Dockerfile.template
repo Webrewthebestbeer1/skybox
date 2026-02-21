@@ -1,12 +1,14 @@
-FROM balenalib/%%BALENA_MACHINE_NAME%%-python:3.11-bookworm-run
+FROM balenalib/%%BALENA_MACHINE_NAME%%-python:3.11-bookworm-build
 
-RUN install_packages python3-dev
+RUN install_packages ffmpeg v4l-utils
+
+ENV UDEV=1
 
 WORKDIR /usr/src/app
 
 COPY app/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY app/ .
 
-CMD ["python", "server.py"]
+CMD ["python3", "server.py"]

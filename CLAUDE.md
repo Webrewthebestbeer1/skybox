@@ -2,10 +2,9 @@
 
 ## What this is
 
-A balena-deployed system for a remote cabin Raspberry Pi 3. Two containers:
+A balena-deployed system for a remote cabin Raspberry Pi 3. Single container:
 
-1. **balena-cam** — video stream on port 80 (pre-existing, not included in this repo)
-2. **motor-control** — Flask API (port 5000) driving a TMC5130A stepper motor over SPI to pan the camera
+**motor-control** — Flask API (port 5000) with integrated MJPEG video stream from a USB webcam and TMC5130A stepper motor control over SPI to pan the camera.
 
 User opens `http://<pi-ip>:5000` to see the video stream and control pan left/right.
 
@@ -13,21 +12,25 @@ User opens `http://<pi-ip>:5000` to see the video stream and control pan left/ri
 
 ```
 skybox/
-├── docker-compose.yml              # Multi-container balena config
+├── docker-compose.yml              # Balena config
 ├── balena.yml                      # Fleet metadata
 ├── CLAUDE.md                       # This file
 └── motor-control/
-    ├── Dockerfile.template         # balenalib python base, spidev
+    ├── Dockerfile.template         # balenalib python base, ffmpeg, spidev
     └── app/
         ├── requirements.txt        # flask, spidev
+        ├── camera.py               # MJPEG streaming via ffmpeg subprocess
         ├── tmc5130.py              # TMC5130A SPI driver (Mode 3, 1 MHz)
-        ├── server.py               # Flask API + position persistence
+        ├── server.py               # Flask API + camera + position persistence
         └── templates/
             └── index.html          # Web UI (zero external deps)
 ```
 
 ## Key design decisions
 
+- **MJPEG via ffmpeg subprocess** — captures from `/dev/video0`, pipes MJPEG frames to Flask streaming response. Light on memory (~15-25MB). No OpenCV dependency.
+- **Single shared frame buffer** — one ffmpeg process feeds multiple browser clients via `threading.Event`.
+- **Auto-restart** — ffmpeg process is restarted automatically if it dies.
 - **SPI Mode 3, 1 MHz** — TMC5130A requirement. 5-byte datagrams, pipelined reads (read twice to get value).
 - **StealthChop + S-curve ramp** — quiet operation, smooth acceleration.
 - **Atomic position persistence** — `write-to-tmp + os.replace` to `/data/motor_position.json`. Survives power cuts.
@@ -43,6 +46,8 @@ skybox/
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/` | GET | Web UI |
+| `/api/stream` | GET | MJPEG video stream |
+| `/api/snapshot` | GET | Single JPEG frame |
 | `/api/status` | GET | Position, target, moving state, limits |
 | `/api/step` | POST | Relative move `{"steps": 1000}` |
 | `/api/stop` | POST | Emergency stop (XTARGET = XACTUAL) |
@@ -62,11 +67,16 @@ skybox/
 | `SPI_BUS` | 0 | SPI bus |
 | `SPI_DEVICE` | 0 | SPI chip select |
 | `FLASK_PORT` | 5000 | Web server port |
-| `CAM_PORT` | 80 | balena-cam port for iframe |
+| `CAM_DEVICE` | /dev/video0 | V4L2 camera device |
+| `CAM_WIDTH` | 640 | Capture width |
+| `CAM_HEIGHT` | 480 | Capture height |
+| `CAM_FPS` | 10 | Capture frame rate |
+| `CAM_QUALITY` | 80 | JPEG quality (1-100) |
 
 ## Hardware
 
 - Raspberry Pi 3 running balenaOS 3.0.8
+- USB webcam on /dev/video0
 - TMC5130A on SPI0: MOSI=GPIO10, MISO=GPIO9, SCLK=GPIO11, CS=GPIO8
 - Stepper motor connected to TMC5130A outputs
 
@@ -77,8 +87,12 @@ cd ~/Code/heisenbrewcrew/skybox
 balena push <fleet-name>
 ```
 
+For local push directly to device (faster iteration):
+```bash
+balena push 192.168.1.102
+```
+
 ## Not yet implemented
 
 - No simulation/mock mode for local testing without hardware
-- balena-cam source not included (assumed pre-deployed)
 - No HTTPS or authentication (local network only)

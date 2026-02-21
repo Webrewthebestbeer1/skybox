@@ -12,8 +12,9 @@ import tempfile
 import threading
 import time
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, Response
 
+from camera import CameraStream
 from tmc5130 import TMC5130, TMC5130Error
 
 logging.basicConfig(
@@ -32,13 +33,24 @@ MOTOR_CURRENT_HOLD = int(os.environ.get("MOTOR_CURRENT_HOLD", 8))
 SPI_BUS = int(os.environ.get("SPI_BUS", 0))
 SPI_DEVICE = int(os.environ.get("SPI_DEVICE", 0))
 FLASK_PORT = int(os.environ.get("FLASK_PORT", 5000))
-CAM_PORT = int(os.environ.get("CAM_PORT", 80))
+CAM_DEVICE = os.environ.get("CAM_DEVICE", "/dev/video0")
+CAM_WIDTH = int(os.environ.get("CAM_WIDTH", 640))
+CAM_HEIGHT = int(os.environ.get("CAM_HEIGHT", 480))
+CAM_FPS = int(os.environ.get("CAM_FPS", 10))
+CAM_QUALITY = int(os.environ.get("CAM_QUALITY", 80))
 
 POSITION_FILE = "/data/motor_position.json"
 
 app = Flask(__name__)
 motor = TMC5130(bus=SPI_BUS, device=SPI_DEVICE)
 motor_lock = threading.Lock()
+camera = CameraStream(
+    device=CAM_DEVICE,
+    width=CAM_WIDTH,
+    height=CAM_HEIGHT,
+    fps=CAM_FPS,
+    quality=CAM_QUALITY,
+)
 
 
 def save_position(position: int) -> None:
@@ -100,7 +112,23 @@ def clamp(value: int, lo: int, hi: int) -> int:
 
 @app.route("/")
 def index():
-    return render_template("index.html", cam_port=CAM_PORT)
+    return render_template("index.html")
+
+
+@app.route("/api/stream")
+def video_stream():
+    return Response(
+        camera.generate_mjpeg(),
+        mimetype="multipart/x-mixed-replace; boundary=frame",
+    )
+
+
+@app.route("/api/snapshot")
+def snapshot():
+    frame = camera.get_frame()
+    if frame is None:
+        return jsonify({"error": "No frame available"}), 503
+    return Response(frame, mimetype="image/jpeg")
 
 
 @app.route("/api/status")
@@ -200,4 +228,5 @@ if __name__ == "__main__":
         "Soft limits: left=%d right=%d", SOFT_LIMIT_LEFT, SOFT_LIMIT_RIGHT
     )
     init_motor()
+    camera.start()
     app.run(host="0.0.0.0", port=FLASK_PORT, threaded=True)
