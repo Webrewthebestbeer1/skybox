@@ -52,11 +52,19 @@
     margin: 12px 12px 0;
   }
   .pos-bar-labels {
+    position: relative;
     display: flex;
     justify-content: space-between;
     font-size: 0.75em;
     color: #888;
     margin-bottom: 2px;
+  }
+  .pos-bar .lbl-zero {
+    position: absolute;
+    top: -14px;
+    font-size: 0.75em;
+    color: #888;
+    transform: translateX(-50%);
   }
   .pos-bar {
     width: 100%;
@@ -64,7 +72,6 @@
     background: #2a2a3e;
     border-radius: 5px;
     position: relative;
-    overflow: hidden;
   }
   .pos-bar .indicator {
     position: absolute;
@@ -74,6 +81,7 @@
     background: #4fc3f7;
     border-radius: 3px;
     transition: left 0.15s ease;
+    margin-left: -3px;
   }
   .pos-text {
     text-align: center;
@@ -95,14 +103,17 @@
     display: flex;
     gap: 8px;
     justify-content: center;
+    position: relative;
   }
   .step-row label {
+    position: absolute;
+    right: calc(50% + 80px);
+    top: 50%;
+    transform: translateY(-50%);
     font-size: 0.75em;
     color: #888;
-    align-self: center;
-    min-width: 56px;
     text-align: right;
-    margin-right: 4px;
+    white-space: nowrap;
   }
   .action-row {
     display: flex;
@@ -141,6 +152,227 @@
   }
   .status.error { color: #e57373; }
   .status.moving { color: #4fc3f7; }
+
+  /* Collapsible panel shared styles */
+  .panel-toggle {
+    width: 100%;
+    background: #2a2a3e;
+    color: #aaa;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 0.85em;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .panel-toggle:hover { background: #333352; }
+  .panel-toggle .arrow { transition: transform 0.2s; }
+  .panel-toggle.open .arrow { transform: rotate(180deg); }
+  .panel-body { display: none; padding-top: 12px; }
+  .panel-body.open { display: block; }
+
+  /* Settings section */
+  .settings-section {
+    width: 100%;
+    max-width: 800px;
+    margin: 16px 12px 0;
+  }
+  .settings-info {
+    background: #2a2a3e;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    font-size: 0.8em;
+    color: #aaa;
+    line-height: 1.6;
+  }
+  .settings-info .limit-value { color: #4fc3f7; }
+  .settings-info .limit-default { color: #888; }
+  .settings-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .settings-row button { padding: 10px 14px; font-size: 0.9em; }
+  button.setting-warn { background: #6e4a2e; }
+  button.setting-warn:active { background: #9a6a4a; }
+
+  /* Device stats panel */
+  .stats-section {
+    width: 100%;
+    max-width: 800px;
+    margin: 12px 12px 0;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  @media (min-width: 600px) {
+    .stats-grid { grid-template-columns: 1fr 1fr 1fr; }
+  }
+  .stat-item {
+    background: #2a2a3e;
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .stat-item .stat-label {
+    font-size: 0.7em;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .stat-item .stat-value {
+    font-size: 1em;
+    color: #e0e0e0;
+  }
+  .stat-item .stat-detail {
+    font-size: 0.7em;
+    color: #666;
+    margin-top: 2px;
+  }
+  .uptime-bar-wrap {
+    margin-top: 12px;
+    background: #2a2a3e;
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .uptime-bar-wrap .stat-label {
+    font-size: 0.7em;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+  .uptime-bar {
+    width: 100%;
+    height: 8px;
+    background: #8a2e2e;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .uptime-bar .fill {
+    height: 100%;
+    background: #2e6e3e;
+    border-radius: 4px;
+    transition: width 0.3s;
+  }
+  .uptime-pct-text {
+    font-size: 0.8em;
+    color: #aaa;
+    margin-top: 4px;
+  }
+  .downtime-list {
+    margin-top: 8px;
+  }
+  .downtime-list .dt-header {
+    font-size: 0.7em;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .downtime-list .dt-event {
+    font-size: 0.75em;
+    color: #aaa;
+    padding: 4px 0;
+    border-bottom: 1px solid #2a2a3e;
+  }
+  .downtime-list .dt-none {
+    font-size: 0.75em;
+    color: #666;
+    font-style: italic;
+  }
+
+  /* Visitors log */
+  .visitors-section {
+    width: 100%;
+    max-width: 800px;
+    margin: 12px 12px 24px;
+  }
+  .visit-list {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .visit-entry {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8em;
+    color: #aaa;
+    padding: 5px 0;
+    border-bottom: 1px solid #252540;
+  }
+  .visit-entry .visit-ip { color: #4fc3f7; }
+  .visit-entry .visit-time { color: #888; }
+  .visit-none {
+    font-size: 0.8em;
+    color: #666;
+    font-style: italic;
+  }
+
+  /* Developer settings (hidden until unlocked) */
+  .dev-section {
+    width: 100%;
+    max-width: 800px;
+    margin: 12px 12px 24px;
+    display: none;
+  }
+  .dev-section.unlocked { display: block; }
+  .dev-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #2a2a3e;
+    border-radius: 6px;
+    padding: 12px 16px;
+  }
+  .dev-row .dev-label {
+    font-size: 0.9em;
+    color: #ccc;
+  }
+  .toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+  .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: #3a3a5c;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle-slider::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 3px;
+    width: 18px;
+    height: 18px;
+    background: #aaa;
+    border-radius: 50%;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .toggle-switch input:checked + .toggle-slider {
+    background: #2e6e3e;
+  }
+  .toggle-switch input:checked + .toggle-slider::after {
+    transform: translateX(20px);
+    background: #fff;
+  }
 </style>
 </head>
 <body>
@@ -154,11 +386,11 @@
   <div class="pos-bar-wrap">
     <div class="pos-bar-labels">
       <span id="lbl-left"></span>
-      <span>0</span>
       <span id="lbl-right"></span>
     </div>
     <div class="pos-bar">
       <div class="indicator" id="pos-indicator"></div>
+      <span class="lbl-zero" id="lbl-zero">0</span>
     </div>
     <div class="pos-text">Position: <span id="pos-value">--</span></div>
   </div>
@@ -166,27 +398,120 @@
   <div class="controls">
     <div class="step-row">
       <label>Coarse</label>
-      <button class="left" data-steps="-4000">&laquo; 4k</button>
-      <button class="right" data-steps="4000">4k &raquo;</button>
+      <button class="left" data-steps="4000">&laquo; 4k</button>
+      <button class="right" data-steps="-4000">4k &raquo;</button>
     </div>
     <div class="step-row">
       <label>Medium</label>
-      <button class="left" data-steps="-1000">&lsaquo; 1k</button>
-      <button class="right" data-steps="1000">1k &rsaquo;</button>
+      <button class="left" data-steps="1000">&lsaquo; 1k</button>
+      <button class="right" data-steps="-1000">1k &rsaquo;</button>
     </div>
     <div class="step-row">
       <label>Fine</label>
-      <button class="left" data-steps="-100">&lsaquo; 100</button>
-      <button class="right" data-steps="100">100 &rsaquo;</button>
+      <button class="left" data-steps="100">&lsaquo; 100</button>
+      <button class="right" data-steps="-100">100 &rsaquo;</button>
     </div>
     <div class="action-row">
       <button class="home" id="btn-home">Home</button>
       <button class="stop" id="btn-stop">Stop</button>
-      <button id="btn-set-home">Set Home</button>
     </div>
   </div>
 
   <div class="status" id="status"></div>
+
+  <div class="settings-section">
+    <button class="panel-toggle" id="settings-toggle">
+      <span>Settings</span>
+      <span class="arrow">&#9660;</span>
+    </button>
+    <div class="panel-body" id="settings-body">
+      <div class="settings-info" id="limits-info">
+        Loading limits...
+      </div>
+      <div class="settings-row">
+        <button id="btn-set-left-limit">Set Left Limit</button>
+        <button id="btn-set-right-limit">Set Right Limit</button>
+      </div>
+      <div class="settings-row">
+        <button id="btn-set-home">Set Home</button>
+        <button class="setting-warn" id="btn-clear-limits">Clear Limits</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-section">
+    <button class="panel-toggle" id="stats-toggle">
+      <span>Device Stats</span>
+      <span class="arrow">&#9660;</span>
+    </button>
+    <div class="panel-body" id="stats-body">
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-label">Uptime</div>
+          <div class="stat-value" id="stat-uptime">--</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">CPU Temp</div>
+          <div class="stat-value" id="stat-cpu-temp">--</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Memory</div>
+          <div class="stat-value" id="stat-memory">--</div>
+          <div class="stat-detail" id="stat-memory-detail"></div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">CPU Load</div>
+          <div class="stat-value" id="stat-cpu-load">--</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">WiFi Signal</div>
+          <div class="stat-value" id="stat-wifi">--</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Disk Usage</div>
+          <div class="stat-value" id="stat-disk">--</div>
+          <div class="stat-detail" id="stat-disk-detail"></div>
+        </div>
+      </div>
+      <div class="uptime-bar-wrap">
+        <div class="stat-label">Availability</div>
+        <div class="uptime-bar"><div class="fill" id="uptime-fill"></div></div>
+        <div class="uptime-pct-text" id="uptime-pct-text">--</div>
+      </div>
+      <div class="downtime-list" id="downtime-list">
+        <div class="dt-header">Recent Downtime</div>
+        <div class="dt-none">No downtime recorded</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="visitors-section">
+    <button class="panel-toggle" id="visitors-toggle">
+      <span>Visitor Log</span>
+      <span class="arrow">&#9660;</span>
+    </button>
+    <div class="panel-body" id="visitors-body">
+      <div class="visit-list" id="visit-list">
+        <div class="visit-none">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dev-section" id="dev-section">
+    <button class="panel-toggle" id="dev-toggle">
+      <span>Developer Settings</span>
+      <span class="arrow">&#9660;</span>
+    </button>
+    <div class="panel-body" id="dev-body">
+      <div class="dev-row">
+        <span class="dev-label">Count Cars</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggle-count-cars">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
 
 <script>
 (function() {
@@ -196,6 +521,10 @@
   var isMoving = false;
   var softLeft = -51200;
   var softRight = 51200;
+  var userLimitLeft = null;
+  var userLimitRight = null;
+  var defaultLimitLeft = -51200;
+  var defaultLimitRight = 51200;
 
   var indicator = document.getElementById('pos-indicator');
   var posValue = document.getElementById('pos-value');
@@ -211,12 +540,43 @@
   function updateBar(pos) {
     var range = softRight - softLeft;
     if (range <= 0) return;
-    var pct = ((pos - softLeft) / range) * 100;
+    // Invert bar direction: motor positive is visual left due to flipped video
+    var pct = ((softRight - pos) / range) * 100;
     pct = Math.max(0, Math.min(100, pct));
-    indicator.style.left = 'calc(' + pct + '% - 3px)';
-    posValue.textContent = pos;
-    lblLeft.textContent = softLeft;
-    lblRight.textContent = softRight;
+    indicator.style.left = pct + '%';
+    posValue.textContent = -pos;
+    lblLeft.textContent = -softRight;
+    lblRight.textContent = -softLeft;
+    // Position the "0" label where motor position 0 falls on the bar
+    var zeroPct = (softRight / range) * 100;
+    zeroPct = Math.max(0, Math.min(100, zeroPct));
+    document.getElementById('lbl-zero').style.left = zeroPct + '%';
+  }
+
+  // --- Limits info display ---
+  function updateLimitsInfo() {
+    var el = document.getElementById('limits-info');
+    var hasUserLimits = (userLimitLeft !== null || userLimitRight !== null);
+
+    if (hasUserLimits) {
+      // Display inverted values (motor coords are flipped from visual)
+      // Visual left = motor right, visual right = motor left
+      var leftStr, rightStr;
+      if (userLimitRight !== null) {
+        leftStr = '<span class="limit-value">' + (-userLimitRight) + '</span>';
+      } else {
+        leftStr = '<span class="limit-default">' + (-defaultLimitRight) + ' (default)</span>';
+      }
+      if (userLimitLeft !== null) {
+        rightStr = '<span class="limit-value">' + (-userLimitLeft) + '</span>';
+      } else {
+        rightStr = '<span class="limit-default">' + (-defaultLimitLeft) + ' (default)</span>';
+      }
+      el.innerHTML = 'Left limit: ' + leftStr + '<br>Right limit: ' + rightStr;
+    } else {
+      el.innerHTML = 'Using default limits: ' + (-defaultLimitRight) + ' to ' + (-defaultLimitLeft) +
+        '<br>Move to a position and set your limits.';
+    }
   }
 
   function fetchStatus() {
@@ -229,15 +589,20 @@
         }
         softLeft = d.soft_limit_left;
         softRight = d.soft_limit_right;
+        userLimitLeft = d.user_limit_left;
+        userLimitRight = d.user_limit_right;
+        defaultLimitLeft = d.default_limit_left;
+        defaultLimitRight = d.default_limit_right;
         updateBar(d.position);
+        updateLimitsInfo();
 
         if (d.moving) {
           isMoving = true;
-          setStatus('Moving... pos=' + d.position + ' target=' + d.target, 'moving');
+          setStatus('Moving... pos=' + (-d.position) + ' target=' + (-d.target), 'moving');
           schedulePoll(pollFast);
         } else {
           if (isMoving) {
-            setStatus('Stopped at ' + d.position, '');
+            setStatus('Stopped at ' + (-d.position), '');
           }
           isMoving = false;
           schedulePoll(pollInterval);
@@ -306,18 +671,22 @@
     })(stepButtons[i]);
   }
 
+  // --- Stop button with hidden dev unlock (3 taps within 2s) ---
+  var stopClicks = [];
   document.getElementById('btn-stop').addEventListener('click', function() {
     postApi('/api/stop');
+    var now = Date.now();
+    stopClicks.push(now);
+    // Keep only clicks within last 2 seconds
+    stopClicks = stopClicks.filter(function(t) { return now - t < 2000; });
+    if (stopClicks.length >= 3) {
+      stopClicks = [];
+      unlockDevSection();
+    }
   });
 
   document.getElementById('btn-home').addEventListener('click', function() {
     postApi('/api/home');
-  });
-
-  document.getElementById('btn-set-home').addEventListener('click', function() {
-    if (confirm('Set current position as home (0)?')) {
-      postApi('/api/set-home');
-    }
   });
 
   // Camera stream error recovery
@@ -330,8 +699,332 @@
     }, 5000);
   });
 
+  // --- Settings panel ---
+  var settingsToggle = document.getElementById('settings-toggle');
+  var settingsBody = document.getElementById('settings-body');
+  var settingsOpen = localStorage.getItem('skybox-settings-open') === '1';
+
+  function applySettingsToggle() {
+    if (settingsOpen) {
+      settingsToggle.classList.add('open');
+      settingsBody.classList.add('open');
+    } else {
+      settingsToggle.classList.remove('open');
+      settingsBody.classList.remove('open');
+    }
+  }
+  applySettingsToggle();
+
+  settingsToggle.addEventListener('click', function() {
+    settingsOpen = !settingsOpen;
+    localStorage.setItem('skybox-settings-open', settingsOpen ? '1' : '0');
+    applySettingsToggle();
+  });
+
+  document.getElementById('btn-set-home').addEventListener('click', function() {
+    if (confirm('Set current position as home (0)?')) {
+      postApi('/api/set-home');
+    }
+  });
+
+  document.getElementById('btn-set-left-limit').addEventListener('click', function() {
+    if (confirm('Set left limit to current position?')) {
+      // UI left = motor right (inverted due to flipped video)
+      postApi('/api/set-limit-right').then(function(d) {
+        if (d && !d.error) {
+          userLimitRight = d.user_limit_right;
+          softLeft = d.soft_limit_left;
+          softRight = d.soft_limit_right;
+          updateLimitsInfo();
+        }
+      });
+    }
+  });
+
+  document.getElementById('btn-set-right-limit').addEventListener('click', function() {
+    if (confirm('Set right limit to current position?')) {
+      // UI right = motor left (inverted due to flipped video)
+      postApi('/api/set-limit-left').then(function(d) {
+        if (d && !d.error) {
+          userLimitLeft = d.user_limit_left;
+          softLeft = d.soft_limit_left;
+          softRight = d.soft_limit_right;
+          updateLimitsInfo();
+        }
+      });
+    }
+  });
+
+  document.getElementById('btn-clear-limits').addEventListener('click', function() {
+    if (confirm('Clear custom limits and revert to defaults?')) {
+      postApi('/api/clear-limits').then(function(d) {
+        if (d && !d.error) {
+          userLimitLeft = d.user_limit_left;
+          userLimitRight = d.user_limit_right;
+          softLeft = d.soft_limit_left;
+          softRight = d.soft_limit_right;
+          updateLimitsInfo();
+        }
+      });
+    }
+  });
+
+  // --- Device Stats panel ---
+  var statsToggle = document.getElementById('stats-toggle');
+  var statsBody = document.getElementById('stats-body');
+  var statsOpen = localStorage.getItem('skybox-stats-open') === '1';
+
+  function applyStatsToggle() {
+    if (statsOpen) {
+      statsToggle.classList.add('open');
+      statsBody.classList.add('open');
+    } else {
+      statsToggle.classList.remove('open');
+      statsBody.classList.remove('open');
+    }
+  }
+  applyStatsToggle();
+
+  statsToggle.addEventListener('click', function() {
+    statsOpen = !statsOpen;
+    localStorage.setItem('skybox-stats-open', statsOpen ? '1' : '0');
+    applyStatsToggle();
+    if (statsOpen) fetchDeviceStats();
+  });
+
+  function formatUptime(seconds) {
+    if (seconds == null) return 'N/A';
+    var d = Math.floor(seconds / 86400);
+    var h = Math.floor((seconds % 86400) / 3600);
+    var m = Math.floor((seconds % 3600) / 60);
+    if (d > 0) return d + 'd ' + h + 'h ' + m + 'm';
+    if (h > 0) return h + 'h ' + m + 'm';
+    return m + 'm';
+  }
+
+  function formatBytes(bytes) {
+    if (bytes == null) return 'N/A';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+    return (bytes / 1073741824).toFixed(1) + ' GB';
+  }
+
+  function formatTimeAgo(ts) {
+    if (ts == null) return '';
+    var diff = (Date.now() / 1000) - ts;
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    return Math.floor(diff / 86400) + 'd ago';
+  }
+
+  function formatDate(ts) {
+    if (ts == null) return '';
+    var d = new Date(ts * 1000);
+    var mon = d.getMonth() + 1;
+    var day = d.getDate();
+    var h = d.getHours();
+    var m = d.getMinutes();
+    return mon + '/' + day + ' ' + (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+  }
+
+  function fetchDeviceStats() {
+    fetch('/api/device-stats')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        // Uptime
+        document.getElementById('stat-uptime').textContent = formatUptime(d.uptime);
+
+        // CPU temp
+        var tempEl = document.getElementById('stat-cpu-temp');
+        if (d.cpu_temp != null) {
+          tempEl.textContent = d.cpu_temp.toFixed(1) + ' \u00B0C';
+        } else {
+          tempEl.textContent = 'N/A';
+        }
+
+        // Memory
+        var memEl = document.getElementById('stat-memory');
+        var memDetail = document.getElementById('stat-memory-detail');
+        if (d.memory) {
+          memEl.textContent = d.memory.percent + '%';
+          memDetail.textContent = formatBytes(d.memory.used) + ' / ' + formatBytes(d.memory.total);
+        } else {
+          memEl.textContent = 'N/A';
+          memDetail.textContent = '';
+        }
+
+        // CPU load
+        var loadEl = document.getElementById('stat-cpu-load');
+        if (d.cpu_load) {
+          loadEl.textContent = d.cpu_load.load_1.toFixed(2) + ' / ' + d.cpu_load.load_5.toFixed(2) + ' / ' + d.cpu_load.load_15.toFixed(2);
+        } else {
+          loadEl.textContent = 'N/A';
+        }
+
+        // WiFi
+        var wifiEl = document.getElementById('stat-wifi');
+        if (d.wifi) {
+          wifiEl.textContent = d.wifi.signal_dbm + ' dBm';
+        } else {
+          wifiEl.textContent = 'N/A';
+        }
+
+        // Disk
+        var diskEl = document.getElementById('stat-disk');
+        var diskDetail = document.getElementById('stat-disk-detail');
+        if (d.disk) {
+          diskEl.textContent = d.disk.percent + '%';
+          diskDetail.textContent = formatBytes(d.disk.used) + ' / ' + formatBytes(d.disk.total);
+        } else {
+          diskEl.textContent = 'N/A';
+          diskDetail.textContent = '';
+        }
+
+        // Downtime / availability
+        if (d.downtime) {
+          var dt = d.downtime;
+          document.getElementById('uptime-fill').style.width = dt.uptime_pct + '%';
+          var trackingText = formatUptime(dt.total_tracked_s);
+          document.getElementById('uptime-pct-text').textContent = dt.uptime_pct + '% (tracked ' + trackingText + ')';
+
+          var listEl = document.getElementById('downtime-list');
+          var html = '<div class="dt-header">Recent Downtime</div>';
+          if (dt.recent_events && dt.recent_events.length > 0) {
+            for (var i = dt.recent_events.length - 1; i >= 0; i--) {
+              var ev = dt.recent_events[i];
+              html += '<div class="dt-event">' +
+                formatDate(ev.start) + ' — down ' + formatUptime(ev.duration_s) +
+                ' (' + formatTimeAgo(ev.end) + ')' +
+                '</div>';
+            }
+          } else {
+            html += '<div class="dt-none">No downtime recorded</div>';
+          }
+          listEl.innerHTML = html;
+        }
+      })
+      .catch(function() {
+        // Silently ignore stats fetch errors
+      });
+  }
+
+  // Poll stats every 10s (independent of motor status polling)
+  setInterval(fetchDeviceStats, 10000);
+
+  // --- Visitor Log panel ---
+  var visitorsToggle = document.getElementById('visitors-toggle');
+  var visitorsBody = document.getElementById('visitors-body');
+  var visitorsOpen = localStorage.getItem('skybox-visitors-open') === '1';
+
+  function applyVisitorsToggle() {
+    if (visitorsOpen) {
+      visitorsToggle.classList.add('open');
+      visitorsBody.classList.add('open');
+    } else {
+      visitorsToggle.classList.remove('open');
+      visitorsBody.classList.remove('open');
+    }
+  }
+  applyVisitorsToggle();
+
+  visitorsToggle.addEventListener('click', function() {
+    visitorsOpen = !visitorsOpen;
+    localStorage.setItem('skybox-visitors-open', visitorsOpen ? '1' : '0');
+    applyVisitorsToggle();
+    if (visitorsOpen) fetchVisits();
+  });
+
+  function fetchVisits() {
+    fetch('/api/visits')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var listEl = document.getElementById('visit-list');
+        if (!d.visits || d.visits.length === 0) {
+          listEl.innerHTML = '<div class="visit-none">No visits recorded</div>';
+          return;
+        }
+        var html = '';
+        for (var i = 0; i < d.visits.length; i++) {
+          var v = d.visits[i];
+          var ts = new Date(v.timestamp * 1000);
+          var mon = ts.getMonth() + 1;
+          var day = ts.getDate();
+          var hr = ts.getHours();
+          var min = ts.getMinutes();
+          var timeStr = mon + '/' + day + ' ' +
+            (hr < 10 ? '0' : '') + hr + ':' +
+            (min < 10 ? '0' : '') + min;
+          html += '<div class="visit-entry">' +
+            '<span class="visit-ip">' + v.ip + '</span>' +
+            '<span class="visit-time">' + timeStr + '</span>' +
+            '</div>';
+        }
+        listEl.innerHTML = html;
+      })
+      .catch(function() {});
+  }
+
+  // Refresh visits every 30s
+  setInterval(fetchVisits, 30000);
+
+  // --- Developer Settings panel ---
+  var devSection = document.getElementById('dev-section');
+  var devToggle = document.getElementById('dev-toggle');
+  var devBody = document.getElementById('dev-body');
+  var devOpen = localStorage.getItem('skybox-dev-open') === '1';
+  var countCarsToggle = document.getElementById('toggle-count-cars');
+
+  function unlockDevSection() {
+    localStorage.setItem('skybox-dev-unlocked', '1');
+    devSection.classList.add('unlocked');
+    fetchDevSettings();
+  }
+
+  if (localStorage.getItem('skybox-dev-unlocked') === '1') {
+    devSection.classList.add('unlocked');
+  }
+
+  function applyDevToggle() {
+    if (devOpen) {
+      devToggle.classList.add('open');
+      devBody.classList.add('open');
+    } else {
+      devToggle.classList.remove('open');
+      devBody.classList.remove('open');
+    }
+  }
+  applyDevToggle();
+
+  devToggle.addEventListener('click', function() {
+    devOpen = !devOpen;
+    localStorage.setItem('skybox-dev-open', devOpen ? '1' : '0');
+    applyDevToggle();
+    if (devOpen) fetchDevSettings();
+  });
+
+  function fetchDevSettings() {
+    fetch('/api/dev-settings')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        countCarsToggle.checked = d.count_cars;
+      })
+      .catch(function() {});
+  }
+
+  countCarsToggle.addEventListener('change', function() {
+    postApi('/api/dev-settings', {count_cars: countCarsToggle.checked})
+      .then(function(d) {
+        if (d) countCarsToggle.checked = d.count_cars;
+      });
+  });
+
   // Initial poll
   fetchStatus();
+  fetchDeviceStats();
+  fetchVisits();
+  if (localStorage.getItem('skybox-dev-unlocked') === '1') fetchDevSettings();
 })();
 </script>
 </body>

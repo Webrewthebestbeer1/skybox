@@ -43,6 +43,7 @@ class CameraStream:
             "-video_size", f"{self.width}x{self.height}",
             "-framerate", str(self.fps),
             "-i", self.device,
+            "-vf", "hflip,vflip",
             "-f", "mjpeg",
             "-q:v", str(max(1, min(31, 31 - int(self.quality * 31 / 100)))),
             "-an",

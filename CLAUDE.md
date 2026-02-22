@@ -40,6 +40,7 @@ skybox/
 - **SPI error recovery** — catches errors, retries with full reinit (3 attempts).
 - **Zero external web dependencies** — no CDN, no jQuery. Everything inline. Works offline.
 - **Touch-hold support** — press and hold step buttons for continuous movement on mobile.
+- **Inverted UI direction** — the camera video is flipped via ffmpeg (`hflip,vflip` in `camera.py`), so the UI negates step values and position display to match visual left/right. Motor-internal coordinates are unchanged; the inversion is purely in the UI layer (`index.html` `data-steps` attributes and `updateBar`).
 
 ## API routes
 
