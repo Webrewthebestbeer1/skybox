@@ -240,6 +240,44 @@ def set_count_cars(enabled):
     set_setting("count_cars", "1" if enabled else "0")
 
 
+def get_highlight_cars():
+    """Return whether car highlight overlay is enabled."""
+    val = get_setting("highlight_cars")
+    return val == "1"
+
+
+def set_highlight_cars(enabled):
+    """Enable or disable car highlight overlay."""
+    set_setting("highlight_cars", "1" if enabled else "0")
+
+
+def get_car_count():
+    """Return the current car count."""
+    val = get_setting("car_count")
+    if val is None:
+        return 0
+    try:
+        return int(val)
+    except ValueError:
+        return 0
+
+
+def set_car_count(count):
+    """Set the car count."""
+    set_setting("car_count", str(int(count)))
+
+
+def increment_car_count():
+    """Atomically increment the car count by 1."""
+    current = get_car_count()
+    set_car_count(current + 1)
+
+
+def reset_car_count():
+    """Reset the car count to 0."""
+    set_setting("car_count", "0")
+
+
 MAX_VISITS = 100
 
 

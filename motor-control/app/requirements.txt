@@ -1,2 +1,4 @@
 flask==3.0.0
 spidev==3.6
+Pillow
+numpy

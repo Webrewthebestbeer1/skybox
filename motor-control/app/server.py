@@ -14,6 +14,7 @@ from flask import Flask, jsonify, render_template, request, Response
 
 import db
 from camera import CameraStream
+from car_detector import CarDetector
 from device_stats import DowntimeTracker, get_all_stats
 from tmc5130 import TMC5130, TMC5130Error
 
@@ -39,6 +40,12 @@ CAM_HEIGHT = int(os.environ.get("CAM_HEIGHT", 480))
 CAM_FPS = int(os.environ.get("CAM_FPS", 10))
 CAM_QUALITY = int(os.environ.get("CAM_QUALITY", 80))
 
+# Detection ROI as fractions of frame — crop to road area before inference
+DETECT_ROI_X1 = float(os.environ.get("DETECT_ROI_X1", 0.05))
+DETECT_ROI_Y1 = float(os.environ.get("DETECT_ROI_Y1", 0.35))
+DETECT_ROI_X2 = float(os.environ.get("DETECT_ROI_X2", 0.85))
+DETECT_ROI_Y2 = float(os.environ.get("DETECT_ROI_Y2", 0.75))
+
 app = Flask(__name__)
 motor = TMC5130(bus=SPI_BUS, device=SPI_DEVICE)
 motor_lock = threading.Lock()
@@ -50,6 +57,7 @@ camera = CameraStream(
     quality=CAM_QUALITY,
 )
 downtime_tracker = None  # initialized in __main__ after db.init_db()
+car_detector = None      # initialized in __main__ after camera.start()
 
 
 def get_effective_limits():
@@ -97,12 +105,34 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/hardware")
+def hardware():
+    return render_template("hardware.html")
+
+
+@app.route("/api/hw-info")
+def api_hw_info():
+    return jsonify({
+        "vmax": MOTOR_VMAX,
+        "amax": MOTOR_AMAX,
+        "current_run": MOTOR_CURRENT_RUN,
+        "current_hold": MOTOR_CURRENT_HOLD,
+        "spi_bus": SPI_BUS,
+        "spi_device": SPI_DEVICE,
+        "cam_device": CAM_DEVICE,
+        "cam_width": CAM_WIDTH,
+        "cam_height": CAM_HEIGHT,
+        "cam_fps": CAM_FPS,
+    })
+
+
 @app.route("/api/stream")
 def video_stream():
-    return Response(
-        camera.generate_mjpeg(),
-        mimetype="multipart/x-mixed-replace; boundary=frame",
-    )
+    if car_detector and db.get_highlight_cars():
+        gen = car_detector.generate_mjpeg()
+    else:
+        gen = camera.generate_mjpeg()
+    return Response(gen, mimetype="multipart/x-mixed-replace; boundary=frame")
 
 
 @app.route("/api/snapshot")
@@ -264,16 +294,60 @@ def api_clear_limits():
 
 @app.route("/api/dev-settings", methods=["GET"])
 def api_dev_settings_get():
-    return jsonify({"count_cars": db.get_count_cars()})
+    count = car_detector.get_car_count() if car_detector else db.get_car_count()
+    return jsonify({
+        "count_cars": db.get_count_cars(),
+        "highlight_cars": db.get_highlight_cars(),
+        "car_count": count,
+    })
 
 
 @app.route("/api/dev-settings", methods=["POST"])
 def api_dev_settings_post():
     data = request.get_json(force=True, silent=True) or {}
+
+    # Handle count_cars toggle — starts/stops the detector
     if "count_cars" in data:
-        db.set_count_cars(bool(data["count_cars"]))
-        log.info("Count cars set to %s", db.get_count_cars())
-    return jsonify({"count_cars": db.get_count_cars()})
+        enabled = bool(data["count_cars"])
+        db.set_count_cars(enabled)
+        if car_detector:
+            if enabled:
+                car_detector.set_counting(True)
+                car_detector.set_car_count(db.get_car_count())
+                if not car_detector._running:
+                    car_detector.start()
+            else:
+                car_detector.set_counting(False)
+                # If highlight is also off, stop the detector entirely
+                if not db.get_highlight_cars():
+                    car_detector.stop()
+        log.info("Count cars set to %s", enabled)
+
+    # Handle highlight_cars toggle
+    if "highlight_cars" in data:
+        enabled = bool(data["highlight_cars"])
+        db.set_highlight_cars(enabled)
+        if car_detector:
+            car_detector.set_highlight(enabled)
+            if enabled and not car_detector._running:
+                car_detector.start()
+            elif not enabled and not db.get_count_cars():
+                car_detector.stop()
+        log.info("Highlight cars set to %s", enabled)
+
+    # Handle car count reset
+    if data.get("reset_car_count"):
+        db.reset_car_count()
+        if car_detector:
+            car_detector.reset_car_count()
+        log.info("Car count reset")
+
+    count = car_detector.get_car_count() if car_detector else db.get_car_count()
+    return jsonify({
+        "count_cars": db.get_count_cars(),
+        "highlight_cars": db.get_highlight_cars(),
+        "car_count": count,
+    })
 
 
 @app.route("/api/visits")
@@ -298,4 +372,18 @@ if __name__ == "__main__":
     camera.start()
     downtime_tracker = DowntimeTracker()
     downtime_tracker.start()
+
+    # Initialize car detector (starts only when toggled on)
+    detect_roi = (DETECT_ROI_X1, DETECT_ROI_Y1, DETECT_ROI_X2, DETECT_ROI_Y2)
+    car_detector = CarDetector(camera, roi=detect_roi)
+    car_detector.set_on_car_counted(lambda count: db.set_car_count(count))
+
+    # Restore state from DB
+    if db.get_count_cars() or db.get_highlight_cars():
+        car_detector.set_counting(db.get_count_cars())
+        car_detector.set_highlight(db.get_highlight_cars())
+        car_detector.set_car_count(db.get_car_count())
+        car_detector.start()
+        log.info("Car detector auto-started from saved settings")
+
     app.run(host="0.0.0.0", port=FLASK_PORT, threaded=True)

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skybox Hardware</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 12px 32px;
+  }
+  h1 {
+    margin: 12px 0 4px;
+    font-size: 1.3em;
+    font-weight: 500;
+    color: #ccc;
+  }
+  .back-link {
+    font-size: 0.8em;
+    color: #888;
+    text-decoration: none;
+    margin-bottom: 16px;
+  }
+  .back-link:hover { color: #4fc3f7; }
+  .hw-img {
+    width: 100%;
+    max-width: 600px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+  .section {
+    width: 100%;
+    max-width: 600px;
+    margin-bottom: 16px;
+  }
+  .section-title {
+    font-size: 0.7em;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .info-item {
+    background: #2a2a3e;
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .info-item .label {
+    font-size: 0.7em;
+    color: #888;
+    margin-bottom: 3px;
+  }
+  .info-item .value {
+    font-size: 0.95em;
+    color: #e0e0e0;
+  }
+  .info-item .value.highlight { color: #4fc3f7; }
+  .info-item.full { grid-column: 1 / -1; }
+  .status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .status-dot.ok { background: #2e6e3e; }
+  .status-dot.warn { background: #b8860b; }
+  .status-dot.err { background: #8a2e2e; }
+</style>
+</head>
+<body>
+  <h1>Skybox Hardware</h1>
+  <a href="/" class="back-link">&larr; Back to camera</a>
+
+  <img src="/static/wiring_img.jpg" alt="Skybox hardware wiring" class="hw-img">
+
+  <div class="section">
+    <div class="section-title">Components</div>
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="label">Computer</div>
+        <div class="value">Raspberry Pi 3</div>
+      </div>
+      <div class="info-item">
+        <div class="label">OS</div>
+        <div class="value">balenaOS 3.0.8</div>
+      </div>
+      <div class="info-item">
+        <div class="label">Motor Driver</div>
+        <div class="value">TMC5130A (SPI)</div>
+      </div>
+      <div class="info-item">
+        <div class="label">Camera</div>
+        <div class="value">USB Webcam</div>
+      </div>
+      <div class="info-item full">
+        <div class="label">SPI Wiring</div>
+        <div class="value">MOSI=GPIO10, MISO=GPIO9, SCLK=GPIO11, CS=GPIO8</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Motor Configuration</div>
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="label">Max Velocity</div>
+        <div class="value" id="hw-vmax">--</div>
+      </div>
+      <div class="info-item">
+        <div class="label">Max Acceleration</div>
+        <div class="value" id="hw-amax">--</div>
+      </div>
+      <div class="info-item">
+        <div class="label">Run Current</div>
+        <div class="value" id="hw-irun">--</div>
+      </div>
+      <div class="info-item">
+        <div class="label">Hold Current</div>
+        <div class="value" id="hw-ihold">--</div>
+      </div>
+      <div class="info-item">
+        <div class="label">Default Left Limit</div>
+        <div class="value" id="hw-limit-left">--</div>
+      </div>
+      <div class="info-item">
+        <div class="label">Default Right Limit</div>
+        <div class="value" id="hw-limit-right">--</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Live Device Status</div>
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="label">Uptime</div>
+        <div class="value" id="hw-uptime">--</div>
+      </div>
+      <div class="info-item">
+        <div class="label">CPU Temp</div>
+        <div class="value" id="hw-cpu-temp">--</div>
+      </div>
+      <div class="info-item">
+        <div class="label">Memory</div>
+        <div class="value" id="hw-memory">--</div>
+      </div>
+      <div class="info-item">
+        <div class="label">CPU Load</div>
+        <div class="value" id="hw-cpu-load">--</div>
+      </div>
+      <div class="info-item">
+        <div class="label">WiFi Signal</div>
+        <div class="value" id="hw-wifi">--</div>
+      </div>
+      <div class="info-item">
+        <div class="label">Disk Usage</div>
+        <div class="value" id="hw-disk">--</div>
+      </div>
+      <div class="info-item">
+        <div class="label">Availability</div>
+        <div class="value" id="hw-availability">--</div>
+      </div>
+      <div class="info-item">
+        <div class="label">Motor Position</div>
+        <div class="value" id="hw-position">--</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function() {
+  function formatUptime(s) {
+    if (s == null) return 'N/A';
+    var d = Math.floor(s / 86400);
+    var h = Math.floor((s % 86400) / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    if (d > 0) return d + 'd ' + h + 'h ' + m + 'm';
+    if (h > 0) return h + 'h ' + m + 'm';
+    return m + 'm';
+  }
+
+  function formatBytes(b) {
+    if (b == null) return 'N/A';
+    if (b < 1073741824) return (b / 1048576).toFixed(0) + ' MB';
+    return (b / 1073741824).toFixed(1) + ' GB';
+  }
+
+  function tempClass(t) {
+    if (t == null) return '';
+    if (t < 60) return 'ok';
+    if (t < 75) return 'warn';
+    return 'err';
+  }
+
+  function fetchStats() {
+    fetch('/api/device-stats')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        document.getElementById('hw-uptime').textContent = formatUptime(d.uptime);
+
+        var tempEl = document.getElementById('hw-cpu-temp');
+        if (d.cpu_temp != null) {
+          var cls = tempClass(d.cpu_temp);
+          tempEl.innerHTML = '<span class="status-dot ' + cls + '"></span>' + d.cpu_temp.toFixed(1) + ' \u00B0C';
+        } else {
+          tempEl.textContent = 'N/A';
+        }
+
+        if (d.memory) {
+          document.getElementById('hw-memory').textContent =
+            formatBytes(d.memory.used) + ' / ' + formatBytes(d.memory.total) + ' (' + d.memory.percent + '%)';
+        }
+
+        if (d.cpu_load) {
+          document.getElementById('hw-cpu-load').textContent =
+            d.cpu_load.load_1.toFixed(2) + ' / ' + d.cpu_load.load_5.toFixed(2) + ' / ' + d.cpu_load.load_15.toFixed(2);
+        }
+
+        if (d.wifi) {
+          document.getElementById('hw-wifi').textContent = d.wifi.signal_dbm + ' dBm';
+        } else {
+          document.getElementById('hw-wifi').textContent = 'N/A';
+        }
+
+        if (d.disk) {
+          document.getElementById('hw-disk').textContent =
+            formatBytes(d.disk.used) + ' / ' + formatBytes(d.disk.total) + ' (' + d.disk.percent + '%)';
+        }
+
+        if (d.downtime) {
+          document.getElementById('hw-availability').textContent = d.downtime.uptime_pct + '%';
+        }
+      })
+      .catch(function() {});
+  }
+
+  function fetchMotor() {
+    fetch('/api/status')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.error) return;
+        document.getElementById('hw-position').textContent = -d.position;
+        document.getElementById('hw-limit-left').textContent = -d.default_limit_right;
+        document.getElementById('hw-limit-right').textContent = -d.default_limit_left;
+      })
+      .catch(function() {});
+  }
+
+  function fetchConfig() {
+    fetch('/api/hw-info')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        document.getElementById('hw-vmax').textContent = d.vmax;
+        document.getElementById('hw-amax').textContent = d.amax;
+        document.getElementById('hw-irun').textContent = d.current_run + ' / 31';
+        document.getElementById('hw-ihold').textContent = d.current_hold + ' / 31';
+      })
+      .catch(function() {});
+  }
+
+  fetchStats();
+  fetchMotor();
+  fetchConfig();
+  setInterval(fetchStats, 10000);
+  setInterval(fetchMotor, 5000);
+})();
+</script>
+</body>
+</html>

@@ -21,6 +21,13 @@
     font-weight: 500;
     color: #ccc;
   }
+  .hw-link {
+    font-size: 0.75em;
+    color: #888;
+    text-decoration: none;
+    margin-bottom: 10px;
+  }
+  .hw-link:hover { color: #4fc3f7; }
   .video-container {
     width: 100%;
     max-width: 800px;
@@ -34,6 +41,28 @@
     width: 100%;
     height: 100%;
     object-fit: contain;
+    cursor: pointer;
+  }
+  .video-container:fullscreen,
+  .video-container:-webkit-full-screen {
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .video-container.soft-fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    border-radius: 0;
+    z-index: 9999;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .video-container .no-stream {
     display: none;
@@ -237,6 +266,8 @@
     color: #666;
     margin-top: 2px;
   }
+  .stat-item .stat-value.warn { color: #b8860b; }
+  .stat-item .stat-value.crit { color: #e57373; }
   .uptime-bar-wrap {
     margin-top: 12px;
     background: #2a2a3e;
@@ -373,10 +404,39 @@
     transform: translateX(20px);
     background: #fff;
   }
+  .dev-count-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #2a2a3e;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-top: 8px;
+  }
+  .dev-count-row .dev-label { font-size: 0.9em; color: #ccc; }
+  .dev-count-row .count-value {
+    font-size: 1.1em;
+    color: #4fc3f7;
+    font-weight: 500;
+    margin: 0 12px;
+  }
+  .dev-count-row .count-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  button.reset-btn {
+    padding: 5px 10px;
+    font-size: 0.75em;
+    background: #5a3a3a;
+    border-radius: 4px;
+  }
+  button.reset-btn:active { background: #7a4a4a; }
 </style>
 </head>
 <body>
   <h1>Skybox Camera</h1>
+  <a href="/hardware" class="hw-link">Hardware</a>
 
   <div class="video-container">
     <img src="/api/stream" alt="Camera stream" id="cam-stream">
@@ -509,6 +569,20 @@
           <input type="checkbox" id="toggle-count-cars">
           <span class="toggle-slider"></span>
         </label>
+      </div>
+      <div class="dev-row" style="margin-top:8px">
+        <span class="dev-label">Highlight Cars</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggle-highlight-cars">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="dev-count-row">
+        <span class="dev-label">Cars Counted</span>
+        <div class="count-right">
+          <span class="count-value" id="car-count-value">0</span>
+          <button class="reset-btn" id="btn-reset-car-count">Reset</button>
+        </div>
       </div>
     </div>
   </div>
@@ -699,6 +773,36 @@
     }, 5000);
   });
 
+  // Fullscreen on click — native API with CSS fallback for mobile
+  var videoContainer = camStream.parentElement;
+  var canNativeFullscreen = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+
+  function isFullscreen() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement) ||
+           videoContainer.classList.contains('soft-fullscreen');
+  }
+
+  function exitSoftFullscreen() {
+    videoContainer.classList.remove('soft-fullscreen');
+  }
+
+  camStream.addEventListener('click', function() {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    } else if (videoContainer.classList.contains('soft-fullscreen')) {
+      exitSoftFullscreen();
+    } else if (canNativeFullscreen) {
+      if (videoContainer.requestFullscreen) {
+        videoContainer.requestFullscreen();
+      } else if (videoContainer.webkitRequestFullscreen) {
+        videoContainer.webkitRequestFullscreen();
+      }
+    } else {
+      // Mobile fallback: CSS-based fullscreen
+      videoContainer.classList.add('soft-fullscreen');
+    }
+  });
+
   // --- Settings panel ---
   var settingsToggle = document.getElementById('settings-toggle');
   var settingsBody = document.getElementById('settings-body');
@@ -840,8 +944,10 @@
         var tempEl = document.getElementById('stat-cpu-temp');
         if (d.cpu_temp != null) {
           tempEl.textContent = d.cpu_temp.toFixed(1) + ' \u00B0C';
+          tempEl.className = 'stat-value' + (d.cpu_temp >= 80 ? ' crit' : d.cpu_temp >= 65 ? ' warn' : '');
         } else {
           tempEl.textContent = 'N/A';
+          tempEl.className = 'stat-value';
         }
 
         // Memory
@@ -849,9 +955,11 @@
         var memDetail = document.getElementById('stat-memory-detail');
         if (d.memory) {
           memEl.textContent = d.memory.percent + '%';
+          memEl.className = 'stat-value' + (d.memory.percent >= 90 ? ' crit' : d.memory.percent >= 75 ? ' warn' : '');
           memDetail.textContent = formatBytes(d.memory.used) + ' / ' + formatBytes(d.memory.total);
         } else {
           memEl.textContent = 'N/A';
+          memEl.className = 'stat-value';
           memDetail.textContent = '';
         }
 
@@ -876,9 +984,11 @@
         var diskDetail = document.getElementById('stat-disk-detail');
         if (d.disk) {
           diskEl.textContent = d.disk.percent + '%';
+          diskEl.className = 'stat-value' + (d.disk.percent >= 95 ? ' crit' : d.disk.percent >= 85 ? ' warn' : '');
           diskDetail.textContent = formatBytes(d.disk.used) + ' / ' + formatBytes(d.disk.total);
         } else {
           diskEl.textContent = 'N/A';
+          diskEl.className = 'stat-value';
           diskDetail.textContent = '';
         }
 
@@ -975,15 +1085,12 @@
   var devBody = document.getElementById('dev-body');
   var devOpen = localStorage.getItem('skybox-dev-open') === '1';
   var countCarsToggle = document.getElementById('toggle-count-cars');
+  var highlightCarsToggle = document.getElementById('toggle-highlight-cars');
+  var carCountValue = document.getElementById('car-count-value');
 
   function unlockDevSection() {
-    localStorage.setItem('skybox-dev-unlocked', '1');
     devSection.classList.add('unlocked');
     fetchDevSettings();
-  }
-
-  if (localStorage.getItem('skybox-dev-unlocked') === '1') {
-    devSection.classList.add('unlocked');
   }
 
   function applyDevToggle() {
@@ -1009,6 +1116,8 @@
       .then(function(r) { return r.json(); })
       .then(function(d) {
         countCarsToggle.checked = d.count_cars;
+        highlightCarsToggle.checked = d.highlight_cars;
+        carCountValue.textContent = d.car_count;
       })
       .catch(function() {});
   }
@@ -1016,15 +1125,60 @@
   countCarsToggle.addEventListener('change', function() {
     postApi('/api/dev-settings', {count_cars: countCarsToggle.checked})
       .then(function(d) {
-        if (d) countCarsToggle.checked = d.count_cars;
+        if (d) {
+          countCarsToggle.checked = d.count_cars;
+          carCountValue.textContent = d.car_count;
+        }
       });
+  });
+
+  highlightCarsToggle.addEventListener('change', function() {
+    postApi('/api/dev-settings', {highlight_cars: highlightCarsToggle.checked})
+      .then(function(d) {
+        if (d) {
+          highlightCarsToggle.checked = d.highlight_cars;
+          // Reload stream to pick up overlay change
+          var camStream = document.getElementById('cam-stream');
+          camStream.src = '/api/stream?' + Date.now();
+        }
+      });
+  });
+
+  document.getElementById('btn-reset-car-count').addEventListener('click', function() {
+    postApi('/api/dev-settings', {reset_car_count: true})
+      .then(function(d) {
+        if (d) carCountValue.textContent = d.car_count;
+      });
+  });
+
+  // Poll dev settings every 5s to update car count when counting
+  var devPollTimer = null;
+  function scheduleDevPoll() {
+    if (devPollTimer) clearTimeout(devPollTimer);
+    devPollTimer = setTimeout(function() {
+      if (countCarsToggle.checked) {
+        fetchDevSettings();
+      }
+      scheduleDevPoll();
+    }, 5000);
+  }
+
+  // Keyboard arrow keys: left/right for 1k steps
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      postApi('/api/step', {steps: 1000});
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      postApi('/api/step', {steps: -1000});
+    }
   });
 
   // Initial poll
   fetchStatus();
   fetchDeviceStats();
   fetchVisits();
-  if (localStorage.getItem('skybox-dev-unlocked') === '1') fetchDevSettings();
+  scheduleDevPoll();
 })();
 </script>
 </body>
