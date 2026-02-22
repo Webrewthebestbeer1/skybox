@@ -398,21 +398,8 @@ class CarDetector:
 
         roi = self._get_roi_pixels(img.width, img.height)
 
-        # ROI rectangle
-        draw.rectangle(
-            [roi[0], roi[1], roi[2], roi[3]],
-            outline="#555555",
-            width=1,
-        )
-
-        # Debug info
-        dx, dy = jitter
-        state = "VEHICLE" if self._car_present else "clear"
-        info = "%s | jitter: %+d,%+d | streak: %d/%d" % (
-            state, dx, dy, self._detect_streak, self._clear_streak
-        )
+        # Car count
         count_text = "count: %d" % self._car_count
-        draw.text((roi[0] + 4, roi[1] + 2), info, fill="#aaaaaa")
         draw.text((roi[2] - 70, roi[1] + 2), count_text, fill="#4fc3f7")
 
         # Motion bounding box in red

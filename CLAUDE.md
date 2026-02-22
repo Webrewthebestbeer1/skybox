@@ -141,6 +141,52 @@ balena push 192.168.1.102 --nolive
 
 Local mode is toggled in the balena dashboard under device settings. When local mode is off, `balena push <ip>` will fail with `ECONNREFUSED` on port 48484.
 
+## Hot deploy (no rebuild)
+
+Syncs local `motor-control/app/` code to the running container (~100KB, excludes static assets). Requires a tunnel in a separate terminal.
+
+Terminal 1 (keep running):
+```bash
+balena device tunnel 0197707 -p 22222:22222
+```
+
+Terminal 2:
+```bash
+cd ~/Code/heisenbrewcrew/skybox
+./deploy-hot.sh
+```
+
+Then restart the motor-control service from the balena cloud dashboard to apply changes.
+
+## Device SSH
+
+Device UUID: `0197707` (partial, sufficient for balena CLI).
+
+SSH into the motor-control container (remote, via balena cloud):
+```bash
+balena device ssh 0197707 motor-control
+```
+
+SSH into the motor-control container (local network):
+```bash
+balena device ssh 192.168.1.102 motor-control
+```
+
+Edit files then kill the server — balena auto-restarts with the new code:
+```bash
+vi /usr/src/app/server.py
+pkill -f "python3 server.py"
+```
+
+SSH into the host OS:
+```bash
+balena device ssh 0197707
+```
+
+Requires an SSH key registered with balena cloud (`balena key list` to check, `balena key add "name" ~/.ssh/id_ed25519.pub` to add).
+
+Note: `balena ssh` is deprecated — use `balena device ssh` instead.
+
 ## Useful URLs (local network)
 
 - Web UI: `http://192.168.1.102`
