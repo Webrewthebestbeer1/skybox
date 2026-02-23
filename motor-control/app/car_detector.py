@@ -12,6 +12,7 @@ sees the entire image as "motion". We solve this with:
 3. Contiguous blob detection with minimum size filters.
 """
 
+import collections
 import io
 import logging
 import threading
@@ -69,6 +70,7 @@ class CarDetector:
         self._car_count = 0
 
         self._on_car_counted = None
+        self._detection_log = collections.deque(maxlen=50)
 
     def start(self):
         if self._running:
@@ -110,6 +112,14 @@ class CarDetector:
 
     def reset_car_count(self):
         self._car_count = 0
+
+    def _log_event(self, event, **details):
+        entry = {"time": time.time(), "event": event}
+        entry.update(details)
+        self._detection_log.append(entry)
+
+    def get_detection_log(self):
+        return list(self._detection_log)
 
     def get_overlay_frame(self):
         with self._lock:
@@ -250,7 +260,7 @@ class CarDetector:
                 self._motion_fraction = motion_frac
 
             if self._counting_enabled:
-                self._update_count(detected)
+                self._update_count(detected, motion_frac, jitter)
 
             if self._highlight_enabled:
                 try:
@@ -372,13 +382,24 @@ class CarDetector:
 
         return None, 0
 
-    def _update_count(self, vehicle_detected):
+    def _update_count(self, vehicle_detected, motion_frac=0.0, jitter=(0, 0)):
         if vehicle_detected:
             self._detect_streak += 1
             self._clear_streak = 0
+            self._log_event(
+                "motion",
+                streak=self._detect_streak,
+                motion_pct=round(motion_frac * 100, 2),
+                jitter=list(jitter),
+            )
             if not self._car_present and self._detect_streak >= CONFIRM_FRAMES:
                 self._car_present = True
                 self._car_count += 1
+                self._log_event(
+                    "vehicle_confirmed",
+                    count=self._car_count,
+                    streak=self._detect_streak,
+                )
                 log.info("Vehicle counted! Total: %d", self._car_count)
                 if self._on_car_counted:
                     try:
@@ -390,6 +411,7 @@ class CarDetector:
             self._detect_streak = 0
             if self._car_present and self._clear_streak >= CLEAR_FRAMES:
                 self._car_present = False
+                self._log_event("vehicle_cleared")
 
     def _draw_overlay(self, frame_jpeg, motion_box, motion_frac, jitter):
         """Draw ROI, motion box, and debug info on frame."""
@@ -398,12 +420,11 @@ class CarDetector:
 
         roi = self._get_roi_pixels(img.width, img.height)
 
-        # Car count
-        count_text = "count: %d" % self._car_count
-        draw.text((roi[2] - 70, roi[1] + 2), count_text, fill="#4fc3f7")
+        # Car count in top-left corner
+        draw.text((8, 4), "Cars: %d" % self._car_count, fill="#4fc3f7")
 
-        # Motion bounding box in red
-        if motion_box:
+        # Motion bounding box in red — only when vehicle is confirmed
+        if motion_box and self._car_present:
             x1, y1, x2, y2 = motion_box
             for offset in range(3):
                 draw.rectangle(
@@ -419,17 +440,20 @@ class CarDetector:
 
     def generate_mjpeg(self):
         last_overlay_id = -1
+        last_frame = None
 
         while True:
             frame = None
 
             with self._lock:
-                if (
-                    self._overlay_frame is not None
-                    and self._overlay_frame_id != last_overlay_id
-                ):
-                    frame = self._overlay_frame
-                    last_overlay_id = self._overlay_frame_id
+                if self._overlay_frame is not None:
+                    if self._overlay_frame_id != last_overlay_id:
+                        frame = self._overlay_frame
+                        last_overlay_id = self._overlay_frame_id
+                    else:
+                        # No new overlay yet — hold the last one instead of
+                        # falling back to the raw stream (which causes flicker)
+                        frame = last_frame
 
             if frame is None:
                 frame = self._camera.get_frame()
@@ -437,6 +461,8 @@ class CarDetector:
             if frame is None:
                 time.sleep(0.05)
                 continue
+
+            last_frame = frame
 
             yield (
                 b"--frame\r\n"

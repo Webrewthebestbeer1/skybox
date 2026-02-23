@@ -25,10 +25,10 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # --- Configuration from environment ---
-SOFT_LIMIT_LEFT = int(os.environ.get("SOFT_LIMIT_LEFT", -51200))
-SOFT_LIMIT_RIGHT = int(os.environ.get("SOFT_LIMIT_RIGHT", 51200))
-MOTOR_VMAX = int(os.environ.get("MOTOR_VMAX", 100000))
-MOTOR_AMAX = int(os.environ.get("MOTOR_AMAX", 500))
+SOFT_LIMIT_LEFT = -51200
+SOFT_LIMIT_RIGHT = 51200
+MOTOR_VMAX = 15000
+MOTOR_AMAX = 150
 MOTOR_CURRENT_RUN = int(os.environ.get("MOTOR_CURRENT_RUN", 16))
 MOTOR_CURRENT_HOLD = int(os.environ.get("MOTOR_CURRENT_HOLD", 8))
 SPI_BUS = int(os.environ.get("SPI_BUS", 0))
@@ -58,6 +58,8 @@ camera = CameraStream(
 )
 downtime_tracker = None  # initialized in __main__ after db.init_db()
 car_detector = None      # initialized in __main__ after camera.start()
+current_vmax = MOTOR_VMAX
+current_amax = MOTOR_AMAX
 
 
 def get_effective_limits():
@@ -350,6 +352,38 @@ def api_dev_settings_post():
     })
 
 
+@app.route("/api/speed", methods=["GET"])
+def api_speed_get():
+    return jsonify({"vmax": current_vmax, "amax": current_amax})
+
+
+@app.route("/api/speed", methods=["POST"])
+def api_speed_post():
+    global current_vmax, current_amax
+    data = request.get_json(force=True, silent=True) or {}
+    vmax = int(data.get("vmax", current_vmax))
+    amax = int(data.get("amax", current_amax))
+    vmax = max(1000, min(200000, vmax))
+    amax = max(50, min(5000, amax))
+    with motor_lock:
+        try:
+            motor.set_speed(vmax, amax)
+            current_vmax = vmax
+            current_amax = amax
+        except Exception:
+            log.exception("SPI error setting speed")
+            return jsonify({"error": "SPI error"}), 500
+    log.info("Speed changed: vmax=%d amax=%d", vmax, amax)
+    return jsonify({"vmax": current_vmax, "amax": current_amax})
+
+
+@app.route("/api/detection-log")
+def api_detection_log():
+    if car_detector:
+        return jsonify({"events": car_detector.get_detection_log()})
+    return jsonify({"events": []})
+
+
 @app.route("/api/visits")
 def api_visits():
     return jsonify({"visits": db.get_visits()})
@@ -378,12 +412,9 @@ if __name__ == "__main__":
     car_detector = CarDetector(camera, roi=detect_roi)
     car_detector.set_on_car_counted(lambda count: db.set_car_count(count))
 
-    # Restore state from DB
-    if db.get_count_cars() or db.get_highlight_cars():
-        car_detector.set_counting(db.get_count_cars())
-        car_detector.set_highlight(db.get_highlight_cars())
-        car_detector.set_car_count(db.get_car_count())
-        car_detector.start()
-        log.info("Car detector auto-started from saved settings")
+    # Always start with detection off — it's too CPU-heavy to auto-resume on a Pi 3
+    db.set_count_cars(False)
+    db.set_highlight_cars(False)
+    log.info("Car detection disabled on boot")
 
     app.run(host="0.0.0.0", port=FLASK_PORT, threaded=True)

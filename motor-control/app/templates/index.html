@@ -73,6 +73,26 @@
   }
   .video-container img.error { display: none; }
   .video-container img.error + .no-stream { display: block; }
+  .video-container .stream-off {
+    display: none;
+    color: #888;
+    text-align: center;
+    padding-top: 35%;
+    font-size: 0.9em;
+  }
+  .video-container.paused img { display: none; }
+  .video-container.paused .stream-off { display: block; }
+  .stream-toggle {
+    padding: 6px 16px;
+    font-size: 0.8em;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #ccc;
+    background: #3a3a5c;
+    margin-top: 8px;
+  }
+  .stream-toggle:active { background: #5a5a8c; }
 
   /* Position bar */
   .pos-bar-wrap {
@@ -230,6 +250,28 @@
   .settings-row button { padding: 10px 14px; font-size: 0.9em; }
   button.setting-warn { background: #6e4a2e; }
   button.setting-warn:active { background: #9a6a4a; }
+
+  /* Speed slider */
+  .speed-control {
+    background: #2a2a3e;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  .speed-control .speed-label {
+    font-size: 0.8em;
+    color: #aaa;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .speed-control .speed-value {
+    color: #4fc3f7;
+  }
+  .speed-control input[type="range"] {
+    width: 100%;
+    accent-color: #4fc3f7;
+  }
 
   /* Device stats panel */
   .stats-section {
@@ -432,16 +474,51 @@
     border-radius: 4px;
   }
   button.reset-btn:active { background: #7a4a4a; }
+
+  /* Detection log */
+  .detection-log {
+    margin-top: 8px;
+    background: #2a2a3e;
+    border-radius: 6px;
+    padding: 12px 16px;
+  }
+  .detection-log .log-header {
+    font-size: 0.8em;
+    color: #888;
+    margin-bottom: 6px;
+  }
+  .detection-log .log-list {
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.75em;
+    line-height: 1.5;
+  }
+  .detection-log .log-entry {
+    padding: 2px 0;
+    border-bottom: 1px solid #252540;
+    color: #aaa;
+  }
+  .detection-log .log-entry.motion { color: #888; }
+  .detection-log .log-entry.vehicle_confirmed { color: #4caf50; }
+  .detection-log .log-entry.vehicle_cleared { color: #ff9800; }
+  .detection-log .log-none {
+    font-size: 0.75em;
+    color: #666;
+    font-style: italic;
+  }
 </style>
 </head>
 <body>
   <h1>Skybox Camera</h1>
   <a href="/hardware" class="hw-link">Hardware</a>
 
-  <div class="video-container">
+  <div class="video-container" id="video-container">
     <img src="/api/stream" alt="Camera stream" id="cam-stream">
     <div class="no-stream">Camera stream unavailable</div>
+    <div class="stream-off" id="stream-off">Stream paused</div>
   </div>
+  <button class="stream-toggle" id="btn-toggle-stream">Pause Stream</button>
 
   <div class="pos-bar-wrap">
     <div class="pos-bar-labels">
@@ -584,10 +661,17 @@
           <button class="reset-btn" id="btn-reset-car-count">Reset</button>
         </div>
       </div>
+      <div class="detection-log" id="detection-log">
+        <div class="log-header">Detection Log</div>
+        <div class="log-list" id="detection-log-list">
+          <div class="log-none">No events yet</div>
+        </div>
+      </div>
     </div>
   </div>
 
 <script>
+console.log('Skybox deployed: ' + new Date().toISOString());
 (function() {
   var pollInterval = 5000;
   var pollFast = 500;
@@ -763,18 +847,37 @@
     postApi('/api/home');
   });
 
-  // Camera stream error recovery
+  // Camera stream error recovery + pause/resume
   var camStream = document.getElementById('cam-stream');
+  var videoContainer = document.getElementById('video-container');
+  var btnToggleStream = document.getElementById('btn-toggle-stream');
+  var streamPaused = false;
+
   camStream.addEventListener('error', function() {
+    if (streamPaused) return;
     camStream.classList.add('error');
     setTimeout(function() {
+      if (streamPaused) return;
       camStream.classList.remove('error');
       camStream.src = '/api/stream?' + Date.now();
     }, 5000);
   });
 
+  btnToggleStream.addEventListener('click', function() {
+    streamPaused = !streamPaused;
+    if (streamPaused) {
+      camStream.src = '';
+      videoContainer.classList.add('paused');
+      btnToggleStream.textContent = 'Resume Stream';
+    } else {
+      videoContainer.classList.remove('paused');
+      camStream.classList.remove('error');
+      camStream.src = '/api/stream?' + Date.now();
+      btnToggleStream.textContent = 'Pause Stream';
+    }
+  });
+
   // Fullscreen on click — native API with CSS fallback for mobile
-  var videoContainer = camStream.parentElement;
   var canNativeFullscreen = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
 
   function isFullscreen() {
@@ -1091,6 +1194,9 @@
   function unlockDevSection() {
     devSection.classList.add('unlocked');
     fetchDevSettings();
+    setTimeout(function() {
+      devSection.scrollIntoView({behavior: 'smooth', block: 'start'});
+    }, 100);
   }
 
   function applyDevToggle() {
@@ -1151,6 +1257,61 @@
       });
   });
 
+  // Detection log
+  var detectionLogList = document.getElementById('detection-log-list');
+
+  function formatLogTime(ts) {
+    var d = new Date(ts * 1000);
+    var h = d.getHours();
+    var m = d.getMinutes();
+    var s = d.getSeconds();
+    return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function formatLogEvent(ev) {
+    var t = formatLogTime(ev.time);
+    if (ev.event === 'vehicle_confirmed') {
+      return t + '  CAR #' + ev.count + ' (streak ' + ev.streak + ')';
+    } else if (ev.event === 'vehicle_cleared') {
+      return t + '  cleared';
+    } else if (ev.event === 'motion') {
+      return t + '  motion ' + ev.motion_pct + '% streak=' + ev.streak + ' jitter=' + ev.jitter[0] + ',' + ev.jitter[1];
+    }
+    return t + '  ' + ev.event;
+  }
+
+  function fetchDetectionLog() {
+    fetch('/api/detection-log')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!d.events || d.events.length === 0) {
+          detectionLogList.innerHTML = '<div class="log-none">No events yet</div>';
+          return;
+        }
+        // Show most recent first, skip consecutive motion events to reduce noise
+        var filtered = [];
+        for (var i = d.events.length - 1; i >= 0; i--) {
+          var ev = d.events[i];
+          if (ev.event === 'motion') {
+            // Only show motion events right before a confirmation
+            if (i + 1 < d.events.length && d.events[i + 1].event === 'vehicle_confirmed') {
+              filtered.push(ev);
+            }
+          } else {
+            filtered.push(ev);
+          }
+        }
+        var html = '';
+        var limit = Math.min(filtered.length, 30);
+        for (var j = 0; j < limit; j++) {
+          var e = filtered[j];
+          html += '<div class="log-entry ' + e.event + '">' + formatLogEvent(e) + '</div>';
+        }
+        detectionLogList.innerHTML = html;
+      })
+      .catch(function() {});
+  }
+
   // Poll dev settings every 5s to update car count when counting
   var devPollTimer = null;
   function scheduleDevPoll() {
@@ -1158,6 +1319,7 @@
     devPollTimer = setTimeout(function() {
       if (countCarsToggle.checked) {
         fetchDevSettings();
+        fetchDetectionLog();
       }
       scheduleDevPoll();
     }, 5000);

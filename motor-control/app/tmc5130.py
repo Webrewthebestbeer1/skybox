@@ -208,6 +208,16 @@ class TMC5130:
         """Check if motor is currently moving (VACTUAL != 0)."""
         return self.get_velocity() != 0
 
+    def set_speed(self, vmax: int, amax: int) -> None:
+        """Update velocity and acceleration without full reinit."""
+        self.write_reg(REG_A1, amax * 2)
+        self.write_reg(REG_V1, vmax // 2)
+        self.write_reg(REG_AMAX, amax)
+        self.write_reg(REG_VMAX, vmax)
+        self.write_reg(REG_DMAX, amax)
+        self.write_reg(REG_D1, amax * 2)
+        log.info("Speed updated: vmax=%d amax=%d", vmax, amax)
+
     def stop(self) -> None:
         """Emergency stop: set XTARGET = XACTUAL."""
         pos = self.get_position()
